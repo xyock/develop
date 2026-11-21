@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>기술자 계산기 - xyock</title>
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --panel: #141414;
+      --border: #2a2a2a;
+      --text: #e0e0e0;
+      --accent: #7ae5b3;
+      --accent-hover: #9cf0c4;
+      --muted: #888;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 16px;
+    }
+    .calculator {
+      width: 100%;
+      max-width: 400px;
+      padding: 20px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    }
+    .display-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 16px;
+    }
+    .previous-operand {
+      color: var(--muted);
+      font-size: 14px;
+      min-height: 20px;
+      word-break: keep-all;
+    }
+    .current-operand {
+      background: #0d0d0d;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: #fff;
+      font-size: 32px;
+      text-align: right;
+      padding: 16px;
+      min-height: 72px;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    button {
+      height: 60px;
+      border: none;
+      border-radius: 10px;
+      background: #1e1e1e;
+      color: var(--text);
+      font-size: 20px;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.05s;
+    }
+    button:active { transform: scale(0.97); }
+    button:hover { background: #2a2a2a; }
+    button.operator { background: #1f3a2f; color: var(--accent); font-weight: 600; }
+    button.operator:hover { background: #2a4a3a; }
+    button.equal { grid-column: span 2; background: var(--accent); color: #0a0a0a; font-weight: 600; }
+    button.equal:hover { background: var(--accent-hover); }
+    button.clear { background: #3a3a3a; }
+    button.clear:hover { background: #4a4a4a; }
+    button.func { background: #2a2a2a; color: var(--muted); font-size: 16px; }
+    button.func:hover { background: #3a3a3a; color: var(--text); }
+    .history {
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+      display: none;
+    }
+    .history.open { display: block; }
+    .history h3 {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #historyList {
+      list-style: none;
+      max-height: 160px;
+      overflow-y: auto;
+      margin-bottom: 8px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    #historyList li {
+      padding: 6px 8px;
+      border-bottom: 1px solid #1a1a1a;
+      display: flex;
+      justify-content: space-between;
+    }
+    #historyList li:last-child { border-bottom: none; }
+    #copyResult {
+      background: #2a2a2a;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 14px;
+      cursor: pointer;
+      width: 100%;
+      margin-bottom: 8px;
+    }
+    #copyResult:hover { background: #3a3a3a; }
+    #toggleHistory {
+      background: transparent;
+      color: var(--accent);
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      padding: 0;
+    }
+    #toggleHistory:hover { text-decoration: underline; }
+    .kbd-hint {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="calculator">
+    <div class="display-wrap">
+      <div class="previous-operand" id="previousOperand"></div>
+      <div class="current-operand" id="currentOperand">0</div>
+    </div>
+
+    <button id="copyResult" type="button">결과 복사</button>
+
+    <div class="buttons">
+      <button class="func clear" type="button" onclick="calc.clear()">C</button>
+      <button class="func" type="button" onclick="calc.delete()">DEL</button>
+      <button class="func" type="button" onclick="calc.toggleHistory()">기록</button>
+      <button class="operator" type="button" onclick="calc.chooseOperation('÷')">÷</button>
+
+      <button type="button" onclick="calc.appendNumber('7')">7</button>
+      <button type="button" onclick="calc.appendNumber('8')">8</button>
+      <button type="button" onclick="calc.appendNumber('9')">9</button>
+      <button class="operator" type="button" onclick="calc.chooseOperation('×')">×</button>
+
+      <button type="button" onclick="calc.appendNumber('4')">4</button>
+      <button type="button" onclick="calc.appendNumber('5')">5</button>
+      <button type="button" onclick="calc.appendNumber('6')">6</button>
+      <button class="operator" type="button" onclick="calc.chooseOperation('−')">−</button>
+
+      <button type="button" onclick="calc.appendNumber('1')">1</button>
+      <button type="button" onclick="calc.appendNumber('2')">2</button>
+      <button type="button" onclick="calc.appendNumber('3')">3</button>
+      <button class="operator" type="button" onclick="calc.chooseOperation('+')">+</button>
+
+      <button type="button" onclick="calc.appendNumber('0')">0</button>
+      <button type="button" onclick="calc.appendDecimal()">.</button>
+      <button class="equal" type="button" onclick="calc.compute()">=</button>
+    </div>
+
+    <div class="history" id="historyPanel">
+      <h3>최근 계산 기록 <button id="toggleHistory" type="button">접기</button></h3>
+      <ul id="historyList"></ul>
+      <button id="clearHistory" type="button" onclick="calc.clearHistory()">기록 전체 삭제</button>
+    </div>
+
+    <div class="kbd-hint">키보드: 숫자 · + − * / · Enter(=) · Backspace(DEL) · Esc(C)</div>
+  </div>
+
+  <script>
+    class Calculator {
+      constructor() {
+        this.previousOperandElement = document.getElementById('previousOperand');
+        this.currentOperandElement = document.getElementById('currentOperand');
+        this.historyListElement = document.getElementById('historyList');
+        this.historyPanel = document.getElementById('historyPanel');
+        this.history = JSON.parse(localStorage.getItem('xyock_calc_history') || '[]');
+        this.clear();
+        this.renderHistory();
+        this.bindKeyboard();
+      }
+
+      clear() {
+        this.currentOperand = '0';
+        this.previousOperand = '';
+        this.operation = undefined;
+        this.shouldResetScreen = false;
+        this.updateDisplay();
+      }
+
+      delete() {
+        if (this.currentOperand === '오류') { this.clear(); return; }
+        if (this.shouldResetScreen) return;
+        if (this.currentOperand.length <= 1) {
+          this.currentOperand = '0';
+        } else {
+          this.currentOperand = this.currentOperand.slice(0, -1);
+        }
+        this.updateDisplay();
+      }
+
+      appendNumber(number) {
+        if (this.shouldResetScreen) {
+          this.currentOperand = '';
+          this.shouldResetScreen = false;
+        }
+        if (this.currentOperand === '0') {
+          this.currentOperand = String(number);
+        } else {
+          this.currentOperand += String(number);
+        }
+        this.updateDisplay();
+      }
+
+      appendDecimal() {
+        if (this.shouldResetScreen) {
+          this.currentOperand = '0';
+          this.shouldResetScreen = false;
+        }
+        if (this.currentOperand.includes('.')) return;
+        this.currentOperand += '.';
+        this.updateDisplay();
+      }
+
+      chooseOperation(operation) {
+        if (this.currentOperand === '오류') return;
+        if (this.previousOperand !== '' && this.operation !== undefined && !this.shouldResetScreen) {
+          this.compute();
+        }
+        this.operation = operation;
+        this.previousOperand = this.currentOperand;
+        this.currentOperand = '';
+        this.shouldResetScreen = false;
+        this.updateDisplay();
+      }
+
+      compute() {
+        if (this.operation === undefined || this.previousOperand === '') return;
+        const prev = parseFloat(this.previousOperand);
+        const current = parseFloat(this.currentOperand === '' ? '0' : this.currentOperand);
+        if (isNaN(prev) || isNaN(current)) return;
+
+        let result;
+        switch (this.operation) {
+          case '+': result = prev + current; break;
+          case '−': result = prev - current; break;
+          case '×': result = prev * current; break;
+          case '÷': result = current === 0 ? NaN : prev / current; break;
+          default: return;
+        }
+
+        if (isNaN(result)) {
+          this.currentOperand = '오류';
+        } else {
+          result = Math.round(result * 1e9) / 1e9;
+          this.currentOperand = String(result);
+          this.addToHistory(`${this.formatNumber(prev)} ${this.opSymbol(this.operation)} ${this.formatNumber(current)} = ${this.formatNumber(result)}`);
+        }
+        this.operation = undefined;
+        this.previousOperand = '';
+        this.shouldResetScreen = true;
+        this.updateDisplay();
+      }
+
+      opSymbol(op) {
+        const map = { '+': '+', '−': '−', '×': '×', '÷': '÷' };
+        return map[op] || op;
+      }
+
+      formatNumber(num) {
+        return String(num);
+      }
+
+      addToHistory(entry) {
+        this.history.unshift(entry);
+        if (this.history.length > 50) this.history.pop();
+        localStorage.setItem('xyock_calc_history', JSON.stringify(this.history));
+        this.renderHistory();
+      }
+
+      clearHistory() {
+        this.history = [];
+        localStorage.removeItem('xyock_calc_history');
+        this.renderHistory();
+      }
+
+      renderHistory() {
+        this.historyListElement.innerHTML = '';
+        this.history.forEach((entry) => {
+          const li = document.createElement('li');
+          li.textContent = entry;
+          this.historyListElement.appendChild(li);
+        });
+      }
+
+      toggleHistory() {
+        this.historyPanel.classList.toggle('open');
+        const btn = document.getElementById('toggleHistory');
+        btn.textContent = this.historyPanel.classList.contains('open') ? '접기' : '기록';
+      }
+
+      copyResult() {
+        const text = this.currentOperandElement.textContent;
+        if (text === '0' || text === '오류') return;
+        navigator.clipboard.writeText(text).then(() => {
+          const btn = document.getElementById('copyResult');
+          const original = btn.textContent;
+          btn.textContent = '복사됨';
+          setTimeout(() => { btn.textContent = original; }, 1200);
+        });
+      }
+
+      updateDisplay() {
+        this.currentOperandElement.textContent = this.currentOperand;
+        this.previousOperandElement.textContent = this.previousOperand;
+      }
+
+      bindKeyboard() {
+        document.addEventListener('keydown', (e) => {
+          if (e.key >= '0' && e.key <= '9') { this.appendNumber(e.key); return; }
+          if (e.key === '.') { this.appendDecimal(); return; }
+          if (e.key === '+') { this.chooseOperation('+'); return; }
+          if (e.key === '-') { this.chooseOperation('−'); return; }
+          if (e.key === '*') { this.chooseOperation('×'); return; }
+          if (e.key === '/') { this.chooseOperation('÷'); return; }
+          if (e.key === 'Enter' || e.key === '=') { e.preventDefault(); this.compute(); return; }
+          if (e.key === 'Backspace') { this.delete(); return; }
+          if (e.key === 'Escape') { this.clear(); return; }
+          if (e.key === 'c' || e.key === 'C') { this.clear(); return; }
+        });
+      }
+    }
+
+    const calc = new Calculator();
+    document.getElementById('copyResult').addEventListener('click', () => calc.copyResult());
+  </script>
+</body>
+</html>
